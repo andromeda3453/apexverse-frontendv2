@@ -125,49 +125,29 @@ const DocsPage = () => {
       method: 'HEADER',
       url: 'Authentication',
       request: {
-        curl: `curl -H "X-API-KEY: sk_live_your_key" https://api.apexverse.ai/v1/projects`,
+        curl: `curl -H "X-API-KEY: sk_live_your_key" https://api.apexverse.ai/v1/crawl/jobs`,
         json: `// Alternatively use Bearer token\nAuthorization: Bearer sk_live_your_key`
       },
-      response: `// Success Response (200 OK)\n[\n  {\n    "id": "uuid-v4",\n    "name": "My Scaling Project",\n    "created_at": "2024-03-24T12:00:00Z"\n  }\n]`,
+      response: `// Success Response (200 OK)\n[\n  {\n    "id": "uuid-v4",\n    "status": "completed",\n    "results_count": 1,\n    "created_at": "2024-03-24T12:00:00Z"\n  }\n]`,
       errors: [
         { code: '401', desc: 'Invalid API Key' },
         { code: '403', desc: 'Forbidden - Quota Exceeded' }
       ]
     },
     {
-      name: 'Create a Project',
-      method: 'POST',
-      url: '/projects',
-      desc: 'Initializes a new project container for your crawl jobs.',
-      params: [
-        { name: 'name', type: 'string', desc: 'Descriptive name for your project.' }
-      ],
-      request: {
-        curl: `curl -X POST https://api.apexverse.ai/v1/projects \\\n  -H "X-API-KEY: sk_live_..." \\\n  -H "Content-Type: application/json" \\\n  -d '{"name": "Ecommerce Scraping"}'`,
-        json: `{\n  "name": "Ecommerce Scraping"\n}`
-      },
-      response: `{\n  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",\n  "name": "Ecommerce Scraping",\n  "created_at": "2024-03-24T12:00:00Z"\n}`,
-      errors: [
-        { code: '201', desc: 'Created' },
-        { code: '400', desc: 'Duplicate project name' },
-        { code: '403', desc: 'Project limit reached' }
-      ]
-    },
-    {
       name: 'Start a Crawl Job',
       method: 'POST',
-      url: '/crawl/run/{project_id}',
-      desc: 'Queues a new extraction task for a specific project. Supports both single-page and multi-level deep crawls.',
+      url: '/crawl/run',
+      desc: 'Queues a new extraction task. Supports both single-page and multi-level deep crawls. Results are processed asynchronously.',
       params: [
-        { name: 'project_id', type: 'uuid', desc: 'The ID of the project.' },
-        { name: 'url', type: 'string', desc: 'Starting URL.' },
-        { name: 'is_deep_crawl', type: 'boolean', desc: 'Enable recursive crawling (Default: false)' },
-        { name: 'max_depth', type: 'int', desc: 'Crawl depth (0-3). Only used if is_deep_crawl is true.' },
-        { name: 'max_pages', type: 'int', desc: 'Max pages to extract (Default: 1)' },
+        { name: 'url', type: 'string', desc: 'The starting URL to crawl.' },
+        { name: 'is_deep_crawl', type: 'boolean', desc: 'Enable recursive crawling (Default: false).' },
+        { name: 'max_depth', type: 'int', desc: 'Crawl depth (0-10). Only used if is_deep_crawl is true.' },
+        { name: 'max_pages', type: 'int', desc: 'Max pages to extract (Default: 1).' },
         { name: 'format', type: 'string', desc: 'Output format: "markdown", "json".' }
       ],
       request: {
-        curl: `curl -X POST https://api.apexverse.ai/v1/crawl/run/{pid} \\\n  -d '{"url": "...", "is_deep_crawl": true, "max_depth": 2}'`,
+        curl: `curl -X POST https://api.apexverse.ai/v1/crawl/run \\\n  -H "X-API-KEY: sk_live_..." \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.com", "is_deep_crawl": true, "max_depth": 2}'`,
         json: `{\n  "url": "https://example.com",\n  "is_deep_crawl": true,\n  "max_depth": 2,\n  "max_pages": 50\n}`
       },
       response: `{\n  "id": "j98bc...",\n  "status": "queued",\n  "is_deep_crawl": true,\n  "max_depth": 2,\n  "max_pages": 50\n}`,
@@ -180,7 +160,7 @@ const DocsPage = () => {
       name: 'Get Job Results',
       method: 'GET',
       url: '/crawl/results/{job_id}',
-      desc: 'Retrieves the extracted and structured content from a completed crawl job.',
+      desc: 'Retrieves the extracted and structured content from a completed crawl job. For deep crawls, this returns an array of all pages captured.',
       params: [
         { name: 'job_id', type: 'uuid', desc: 'The ID of the crawl job.' }
       ],
@@ -188,7 +168,7 @@ const DocsPage = () => {
         curl: `curl https://api.apexverse.ai/v1/crawl/results/{job_id} \\\n  -H "X-API-KEY: sk_live_..."`,
         json: `// GET Request - no body required`
       },
-      response: `{\n  "job": {\n    "id": "j98bc20c...",\n    "status": "completed"\n  },\n  "result": {\n    "content_markdown": "# Example Title\\nContent here...",\n    "metadata_": {\n      "title": "Example",\n      "source_url": "https://example.com"\n    }\n  }\n}`,
+      response: `{\n  "job": {\n    "id": "j98bc20c...",\n    "status": "completed",\n    "results_count": 1\n  },\n  "results": [\n    {\n      "url": "https://example.com",\n      "depth": 0,\n      "content_markdown": "# Title\\nBody text...",\n      "metadata_": { "title": "Example" }\n    }\n  ]\n}`,
       errors: [
         { code: '200', desc: 'OK' },
         { code: '404', desc: 'Job not found' }
@@ -203,7 +183,7 @@ const DocsPage = () => {
         curl: `curl https://api.apexverse.ai/v1/usage \\\n  -H "X-API-KEY: sk_live_..."`,
         json: `// GET Request - no body required`
       },
-      response: `{\n  "pages_used": 145,\n  "page_limit": 5000,\n  "projects_count": 3,\n  "projects_limit": 10,\n  "plan_name": "Pro",\n  "current_period_end": "2024-04-24T12:00:00Z"\n}`,
+      response: `{\n  "pages_used": 145,\n  "page_limit": 5000,\n  "plan_name": "Pro",\n  "current_period_end": "2024-04-24T12:00:00Z"\n}`,
       errors: [
         { code: '200', desc: 'OK' }
       ]
